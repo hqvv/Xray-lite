@@ -114,10 +114,6 @@ func getRegepxByFormat() string {
 	switch strings.ToLower(*format) {
 	case "json":
 		return `^.+\.json$`
-	case "toml":
-		return `^.+\.toml$`
-	case "yaml", "yml":
-		return `^.+\.(yaml|yml)$`
 	default:
 		return `^.+\.(json|toml|yaml|yml)$`
 	}

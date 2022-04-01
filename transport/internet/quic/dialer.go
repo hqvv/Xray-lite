@@ -17,7 +17,7 @@ import (
 
 type sessionContext struct {
 	rawConn *sysConn
-	session quic.Session
+	session quic.Connection
 }
 
 var errSessionClosed = newError("session closed")
@@ -47,7 +47,7 @@ type clientSessions struct {
 	cleanup  *task.Periodic
 }
 
-func isActive(s quic.Session) bool {
+func isActive(s quic.Connection) bool {
 	select {
 	case <-s.Context().Done():
 		return false

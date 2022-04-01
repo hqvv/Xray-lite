@@ -54,10 +54,6 @@ func GetFormatByExtension(ext string) string {
 	switch strings.ToLower(ext) {
 	case "pb", "protobuf":
 		return "protobuf"
-	case "yaml", "yml":
-		return "yaml"
-	case "toml":
-		return "toml"
 	case "json":
 		return "json"
 	default:

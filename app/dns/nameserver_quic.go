@@ -37,7 +37,7 @@ type QUICNameServer struct {
 	reqID       uint32
 	name        string
 	destination *net.Destination
-	session     quic.Session
+	session     quic.Connection
 }
 
 // NewQUICNameServer creates DNS-over-QUIC client object for local resolving
@@ -322,7 +322,7 @@ func (s *QUICNameServer) QueryIP(ctx context.Context, domain string, clientIP ne
 	}
 }
 
-func isActive(s quic.Session) bool {
+func isActive(s quic.Connection) bool {
 	select {
 	case <-s.Context().Done():
 		return false
@@ -331,8 +331,8 @@ func isActive(s quic.Session) bool {
 	}
 }
 
-func (s *QUICNameServer) getSession() (quic.Session, error) {
-	var session quic.Session
+func (s *QUICNameServer) getSession() (quic.Connection, error) {
+	var session quic.Connection
 	s.RLock()
 	session = s.session
 	if session != nil && isActive(session) {
@@ -365,7 +365,7 @@ func (s *QUICNameServer) getSession() (quic.Session, error) {
 	return session, nil
 }
 
-func (s *QUICNameServer) openSession() (quic.Session, error) {
+func (s *QUICNameServer) openSession() (quic.Connection, error) {
 	tlsConfig := tls.Config{}
 	quicConfig := &quic.Config{
 		HandshakeIdleTimeout: handshakeTimeout,

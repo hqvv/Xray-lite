@@ -8,11 +8,9 @@ import (
 
 type TransportConfig struct {
 	TCPConfig  *TCPConfig          `json:"tcpSettings"`
-	KCPConfig  *KCPConfig          `json:"kcpSettings"`
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
 	DSConfig   *DomainSocketConfig `json:"dsSettings"`
-	QUICConfig *QUICConfig         `json:"quicSettings"`
 	GRPCConfig *GRPCConfig         `json:"grpcSettings"`
 	GUNConfig  *GRPCConfig         `json:"gunSettings"`
 }
@@ -31,18 +29,6 @@ func (c *TransportConfig) Build() (*global.Config, error) {
 			Settings:     serial.ToTypedMessage(ts),
 		})
 	}
-
-	if c.KCPConfig != nil {
-		ts, err := c.KCPConfig.Build()
-		if err != nil {
-			return nil, newError("failed to build mKCP config").Base(err).AtError()
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "mkcp",
-			Settings:     serial.ToTypedMessage(ts),
-		})
-	}
-
 	if c.WSConfig != nil {
 		ts, err := c.WSConfig.Build()
 		if err != nil {
@@ -75,18 +61,6 @@ func (c *TransportConfig) Build() (*global.Config, error) {
 			Settings:     serial.ToTypedMessage(ds),
 		})
 	}
-
-	if c.QUICConfig != nil {
-		qs, err := c.QUICConfig.Build()
-		if err != nil {
-			return nil, newError("Failed to build QUIC config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "quic",
-			Settings:     serial.ToTypedMessage(qs),
-		})
-	}
-
 	if c.GRPCConfig == nil {
 		c.GRPCConfig = c.GUNConfig
 	}

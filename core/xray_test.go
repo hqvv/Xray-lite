@@ -17,8 +17,8 @@ import (
 	"github.com/xtls/xray-core/features/dns/localdns"
 	_ "github.com/xtls/xray-core/main/distro/all"
 	"github.com/xtls/xray-core/proxy/dokodemo"
-	"github.com/xtls/xray-core/proxy/vmess"
-	"github.com/xtls/xray-core/proxy/vmess/outbound"
+	"github.com/xtls/xray-core/proxy/vless"
+	"github.com/xtls/xray-core/proxy/vless/outbound"
 	"github.com/xtls/xray-core/testing/servers/tcp"
 )
 
@@ -66,13 +66,13 @@ func TestXrayClose(t *testing.T) {
 		Outbound: []*OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&outbound.Config{
-					Receiver: []*protocol.ServerEndpoint{
+					Vnext: []*protocol.ServerEndpoint{
 						{
 							Address: net.NewIPOrDomain(net.LocalHostIP),
 							Port:    uint32(0),
 							User: []*protocol.User{
 								{
-									Account: serial.ToTypedMessage(&vmess.Account{
+									Account: serial.ToTypedMessage(&vless.Account{
 										Id: userID.String(),
 									}),
 								},

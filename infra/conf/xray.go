@@ -23,7 +23,6 @@ var (
 		"shadowsocks":   func() interface{} { return new(ShadowsocksServerConfig) },
 		"socks":         func() interface{} { return new(SocksServerConfig) },
 		"vless":         func() interface{} { return new(VLessInboundConfig) },
-		"vmess":         func() interface{} { return new(VMessInboundConfig) },
 		"trojan":        func() interface{} { return new(TrojanServerConfig) },
 	}, "protocol", "settings")
 
@@ -35,7 +34,6 @@ var (
 		"shadowsocks": func() interface{} { return new(ShadowsocksClientConfig) },
 		"socks":       func() interface{} { return new(SocksClientConfig) },
 		"vless":       func() interface{} { return new(VLessOutboundConfig) },
-		"vmess":       func() interface{} { return new(VMessOutboundConfig) },
 		"trojan":      func() interface{} { return new(TrojanClientConfig) },
 		"dns":         func() interface{} { return new(DNSOutboundConfig) },
 	}, "protocol", "settings")
@@ -532,9 +530,6 @@ func (c *Config) Override(o *Config, fn string) {
 func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
 	if s.TCPSettings == nil {
 		s.TCPSettings = t.TCPConfig
-	}
-	if s.KCPSettings == nil {
-		s.KCPSettings = t.KCPConfig
 	}
 	if s.WSSettings == nil {
 		s.WSSettings = t.WSConfig

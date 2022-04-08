@@ -48,8 +48,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, err
 			return NewDoHNameServer(u, dispatcher)
 		case strings.EqualFold(u.Scheme, "https+local"): // DOH Local mode
 			return NewDoHLocalNameServer(u), nil
-		case strings.EqualFold(u.Scheme, "quic+local"): // DNS-over-QUIC Local mode
-			return NewQUICNameServer(u)
 		case strings.EqualFold(u.Scheme, "tcp"): // DNS-over-TCP Remote mode
 			return NewTCPNameServer(u, dispatcher)
 		case strings.EqualFold(u.Scheme, "tcp+local"): // DNS-over-TCP Local mode

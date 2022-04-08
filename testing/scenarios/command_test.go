@@ -27,9 +27,9 @@ import (
 	core "github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/proxy/dokodemo"
 	"github.com/xtls/xray-core/proxy/freedom"
-	"github.com/xtls/xray-core/proxy/vmess"
-	"github.com/xtls/xray-core/proxy/vmess/inbound"
-	"github.com/xtls/xray-core/proxy/vmess/outbound"
+	"github.com/xtls/xray-core/proxy/vless"
+	"github.com/xtls/xray-core/proxy/vless/inbound"
+	"github.com/xtls/xray-core/proxy/vless/outbound"
 	"github.com/xtls/xray-core/testing/servers/tcp"
 )
 
@@ -178,9 +178,9 @@ func TestCommanderAddRemoveUser(t *testing.T) {
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: u1.String(),
 							}),
 						},
@@ -240,17 +240,15 @@ func TestCommanderAddRemoveUser(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&outbound.Config{
-					Receiver: []*protocol.ServerEndpoint{
+					Vnext: []*protocol.ServerEndpoint{
 						{
 							Address: net.NewIPOrDomain(net.LocalHostIP),
 							Port:    uint32(serverPort),
 							User: []*protocol.User{
 								{
-									Account: serial.ToTypedMessage(&vmess.Account{
-										Id: u2.String(),
-										SecuritySettings: &protocol.SecurityConfig{
-											Type: protocol.SecurityType_AES128_GCM,
-										},
+									Account: serial.ToTypedMessage(&vless.Account{
+										Id:         u2.String(),
+										Encryption: "none",
 									}),
 								},
 							},
@@ -282,7 +280,7 @@ func TestCommanderAddRemoveUser(t *testing.T) {
 			&command.AddUserOperation{
 				User: &protocol.User{
 					Email: "test@example.com",
-					Account: serial.ToTypedMessage(&vmess.Account{
+					Account: serial.ToTypedMessage(&vless.Account{
 						Id: u2.String(),
 					}),
 				},
@@ -362,17 +360,17 @@ func TestCommanderStats(t *testing.T) {
 		},
 		Inbound: []*core.InboundHandlerConfig{
 			{
-				Tag: "vmess",
+				Tag: "vless",
 				ReceiverSettings: serial.ToTypedMessage(&proxyman.ReceiverConfig{
 					PortList: &net.PortList{Range: []*net.PortRange{net.SinglePortRange(serverPort)}},
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
 							Level: 1,
 							Email: "test",
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: userID.String(),
 							}),
 						},
@@ -421,17 +419,15 @@ func TestCommanderStats(t *testing.T) {
 		Outbound: []*core.OutboundHandlerConfig{
 			{
 				ProxySettings: serial.ToTypedMessage(&outbound.Config{
-					Receiver: []*protocol.ServerEndpoint{
+					Vnext: []*protocol.ServerEndpoint{
 						{
 							Address: net.NewIPOrDomain(net.LocalHostIP),
 							Port:    uint32(serverPort),
 							User: []*protocol.User{
 								{
-									Account: serial.ToTypedMessage(&vmess.Account{
-										Id: userID.String(),
-										SecuritySettings: &protocol.SecurityConfig{
-											Type: protocol.SecurityType_AES128_GCM,
-										},
+									Account: serial.ToTypedMessage(&vless.Account{
+										Id:         userID.String(),
+										Encryption: "none",
 									}),
 								},
 							},
@@ -483,7 +479,7 @@ func TestCommanderStats(t *testing.T) {
 	}
 
 	sresp, err = sClient.GetStats(context.Background(), &statscmd.GetStatsRequest{
-		Name:   "inbound>>>vmess>>>traffic>>>uplink",
+		Name:   "inbound>>>vless>>>traffic>>>uplink",
 		Reset_: true,
 	})
 	common.Must(err)

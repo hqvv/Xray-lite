@@ -17,9 +17,9 @@ import (
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/proxy/dokodemo"
 	"github.com/xtls/xray-core/proxy/freedom"
-	"github.com/xtls/xray-core/proxy/vmess"
-	"github.com/xtls/xray-core/proxy/vmess/inbound"
-	"github.com/xtls/xray-core/proxy/vmess/outbound"
+	"github.com/xtls/xray-core/proxy/vless"
+	"github.com/xtls/xray-core/proxy/vless/inbound"
+	"github.com/xtls/xray-core/proxy/vless/outbound"
 	"github.com/xtls/xray-core/testing/servers/tcp"
 	"github.com/xtls/xray-core/testing/servers/udp"
 )
@@ -48,9 +48,9 @@ func TestDokodemoTCP(t *testing.T) {
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: userID.String(),
 							}),
 						},
@@ -97,13 +97,13 @@ func TestDokodemoTCP(t *testing.T) {
 			Outbound: []*core.OutboundHandlerConfig{
 				{
 					ProxySettings: serial.ToTypedMessage(&outbound.Config{
-						Receiver: []*protocol.ServerEndpoint{
+						Vnext: []*protocol.ServerEndpoint{
 							{
 								Address: net.NewIPOrDomain(net.LocalHostIP),
 								Port:    uint32(serverPort),
 								User: []*protocol.User{
 									{
-										Account: serial.ToTypedMessage(&vmess.Account{
+										Account: serial.ToTypedMessage(&vless.Account{
 											Id: userID.String(),
 										}),
 									},
@@ -152,9 +152,9 @@ func TestDokodemoUDP(t *testing.T) {
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: userID.String(),
 							}),
 						},
@@ -195,13 +195,13 @@ func TestDokodemoUDP(t *testing.T) {
 			Outbound: []*core.OutboundHandlerConfig{
 				{
 					ProxySettings: serial.ToTypedMessage(&outbound.Config{
-						Receiver: []*protocol.ServerEndpoint{
+						Vnext: []*protocol.ServerEndpoint{
 							{
 								Address: net.NewIPOrDomain(net.LocalHostIP),
 								Port:    uint32(serverPort),
 								User: []*protocol.User{
 									{
-										Account: serial.ToTypedMessage(&vmess.Account{
+										Account: serial.ToTypedMessage(&vless.Account{
 											Id: userID.String(),
 										}),
 									},

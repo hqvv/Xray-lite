@@ -21,9 +21,9 @@ import (
 	"github.com/xtls/xray-core/proxy/blackhole"
 	"github.com/xtls/xray-core/proxy/dokodemo"
 	"github.com/xtls/xray-core/proxy/freedom"
-	"github.com/xtls/xray-core/proxy/vmess"
-	"github.com/xtls/xray-core/proxy/vmess/inbound"
-	"github.com/xtls/xray-core/proxy/vmess/outbound"
+	"github.com/xtls/xray-core/proxy/vless"
+	"github.com/xtls/xray-core/proxy/vless/inbound"
+	"github.com/xtls/xray-core/proxy/vless/outbound"
 	"github.com/xtls/xray-core/testing/servers/tcp"
 )
 
@@ -90,9 +90,9 @@ func TestReverseProxy(t *testing.T) {
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: userID.String(),
 							}),
 						},
@@ -160,17 +160,15 @@ func TestReverseProxy(t *testing.T) {
 			{
 				Tag: "reverse",
 				ProxySettings: serial.ToTypedMessage(&outbound.Config{
-					Receiver: []*protocol.ServerEndpoint{
+					Vnext: []*protocol.ServerEndpoint{
 						{
 							Address: net.NewIPOrDomain(net.LocalHostIP),
 							Port:    uint32(reversePort),
 							User: []*protocol.User{
 								{
-									Account: serial.ToTypedMessage(&vmess.Account{
-										Id: userID.String(),
-										SecuritySettings: &protocol.SecurityConfig{
-											Type: protocol.SecurityType_AES128_GCM,
-										},
+									Account: serial.ToTypedMessage(&vless.Account{
+										Id:         userID.String(),
+										Encryption: "none",
 									}),
 								},
 							},
@@ -273,9 +271,9 @@ func TestReverseProxyLongRunning(t *testing.T) {
 					Listen:   net.NewIPOrDomain(net.LocalHostIP),
 				}),
 				ProxySettings: serial.ToTypedMessage(&inbound.Config{
-					User: []*protocol.User{
+					Clients: []*protocol.User{
 						{
-							Account: serial.ToTypedMessage(&vmess.Account{
+							Account: serial.ToTypedMessage(&vless.Account{
 								Id: userID.String(),
 							}),
 						},
@@ -357,17 +355,15 @@ func TestReverseProxyLongRunning(t *testing.T) {
 			{
 				Tag: "reverse",
 				ProxySettings: serial.ToTypedMessage(&outbound.Config{
-					Receiver: []*protocol.ServerEndpoint{
+					Vnext: []*protocol.ServerEndpoint{
 						{
 							Address: net.NewIPOrDomain(net.LocalHostIP),
 							Port:    uint32(reversePort),
 							User: []*protocol.User{
 								{
-									Account: serial.ToTypedMessage(&vmess.Account{
-										Id: userID.String(),
-										SecuritySettings: &protocol.SecurityConfig{
-											Type: protocol.SecurityType_AES128_GCM,
-										},
+									Account: serial.ToTypedMessage(&vless.Account{
+										Id:         userID.String(),
+										Encryption: "none",
 									}),
 								},
 							},

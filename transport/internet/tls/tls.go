@@ -3,8 +3,6 @@ package tls
 import (
 	"crypto/tls"
 
-	utls "github.com/refraction-networking/utls"
-
 	"github.com/xtls/xray-core/common/buf"
 	"github.com/xtls/xray-core/common/net"
 )
@@ -48,7 +46,7 @@ func Server(c net.Conn, config *tls.Config) net.Conn {
 }
 
 type UConn struct {
-	*utls.UConn
+	*tls.Conn
 }
 
 func (c *UConn) HandshakeAddress() net.Address {
@@ -60,24 +58,4 @@ func (c *UConn) HandshakeAddress() net.Address {
 		return nil
 	}
 	return net.ParseAddress(state.ServerName)
-}
-
-func UClient(c net.Conn, config *tls.Config, fingerprint *utls.ClientHelloID) net.Conn {
-	utlsConn := utls.UClient(c, copyConfig(config), *fingerprint)
-	return &UConn{UConn: utlsConn}
-}
-
-func copyConfig(c *tls.Config) *utls.Config {
-	return &utls.Config{
-		RootCAs:            c.RootCAs,
-		ServerName:         c.ServerName,
-		InsecureSkipVerify: c.InsecureSkipVerify,
-	}
-}
-
-var Fingerprints = map[string]*utls.ClientHelloID{
-	"chrome":     &utls.HelloChrome_Auto,
-	"firefox":    &utls.HelloFirefox_Auto,
-	"safari":     &utls.HelloIOS_Auto,
-	"randomized": &utls.HelloRandomized,
 }

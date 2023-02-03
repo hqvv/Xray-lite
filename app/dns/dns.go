@@ -169,58 +169,67 @@ func (s *DNS) IsOwnLink(ctx context.Context) bool {
 
 // LookupIP implements dns.Client.
 func (s *DNS) LookupIP(domain string, option dns.IPOption) ([]net.IP, error) {
+	ips, _, err := s.LookupIPWithTTL(domain, option)
+	return ips, err
+}
+
+func (s *DNS) LookupIPWithTTL(domain string, option dns.IPOption) ([]net.IP, uint32, error) {
 	if domain == "" {
-		return nil, newError("empty domain name")
+		return nil, 0, newError("empty domain name")
 	}
 
 	option.IPv4Enable = option.IPv4Enable && s.ipOption.IPv4Enable
 	option.IPv6Enable = option.IPv6Enable && s.ipOption.IPv6Enable
 
 	if !option.IPv4Enable && !option.IPv6Enable {
-		return nil, dns.ErrEmptyResponse
+		return nil, 0, dns.ErrEmptyResponse
 	}
 
 	// Normalize the FQDN form query
-	if strings.HasSuffix(domain, ".") {
-		domain = domain[:len(domain)-1]
-	}
+	domain = strings.TrimSuffix(domain, ".")
 
 	// Static host lookup
 	switch addrs := s.hosts.Lookup(domain, option); {
 	case addrs == nil: // Domain not recorded in static host
 		break
 	case len(addrs) == 0: // Domain recorded, but no valid IP returned (e.g. IPv4 address with only IPv6 enabled)
-		return nil, dns.ErrEmptyResponse
+		return nil, 0, dns.ErrEmptyResponse
 	case len(addrs) == 1 && addrs[0].Family().IsDomain(): // Domain replacement
 		newError("domain replaced: ", domain, " -> ", addrs[0].Domain()).WriteToLog()
 		domain = addrs[0].Domain()
 	default: // Successfully found ip records in static host
 		newError("returning ", len(addrs), " IP(s) for domain ", domain, " -> ", addrs).WriteToLog()
-		return toNetIP(addrs)
+		if ips, err := toNetIP(addrs); err != nil {
+			return nil, 0, err
+		} else {
+			return ips, dns.DefaultTTL, nil
+		}
 	}
 
 	// Name servers lookup
-	errs := []error{}
+	var errs []error
 	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
 	for _, client := range s.sortClients(domain) {
-		if !option.FakeEnable && strings.EqualFold(client.Name(), "FakeDNS") {
-			newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
-			continue
+		if strings.EqualFold(client.Name(), "FakeDNS") {
+			if !option.FakeEnable {
+				newError("skip DNS resolution for domain ", domain, " at server ", client.Name()).AtDebug().WriteToLog()
+				continue
+			}
 		}
-		ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
+		ips, ttl, err := client.QueryIP(ctx, domain, option, s.disableCache)
 		if len(ips) > 0 {
-			return ips, nil
+			return ips, ttl, nil
 		}
 		if err != nil {
 			newError("failed to lookup ip for domain ", domain, " at server ", client.Name()).Base(err).WriteToLog()
 			errs = append(errs, err)
 		}
 		if err != context.Canceled && err != context.DeadlineExceeded && err != errExpectedIPNonMatch && err != dns.ErrEmptyResponse {
-			return nil, err
+			return nil, 0, err
 		}
 	}
 
-	return nil, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
+	return nil, 0, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
 }
 
 // LookupHosts implements dns.HostsLookup.

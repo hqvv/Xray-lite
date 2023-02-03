@@ -19,8 +19,10 @@ import (
 type Server interface {
 	// Name of the Client.
 	Name() string
+	// QueryCachedIP looks up domain in server cache. If no cache mechanism is implemented, return errRecordNotFound
+	QueryCachedIP(ctx context.Context, domain string, option dns.IPOption) ([]net.IP, uint32, error)
 	// QueryIP sends IP queries to its configured server.
-	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, error)
+	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption) ([]net.IP, uint32, error)
 }
 
 // Client is the interface for DNS client.
@@ -32,37 +34,42 @@ type Client struct {
 	expectIPs    []*router.GeoIPMatcher
 }
 
-var errExpectedIPNonMatch = errors.New("expectIPs not match")
+var (
+	NameServerRegister    = map[string]NameServerInit{}
+	errExpectedIPNonMatch = errors.New("expectIPs not match")
+)
+
+func RegisterProtocol(protocol string, i NameServerInit) {
+	newError("registered DNS protocol ", protocol).AtDebug().WriteToLog()
+	NameServerRegister[protocol] = i
+}
 
 // NewServer creates a name server object according to the network destination url.
-func NewServer(dest net.Destination, dispatcher routing.Dispatcher, queryStrategy QueryStrategy) (Server, error) {
+func NewServer(ctx context.Context, dest net.Destination, dispatcher routing.Dispatcher, queryStrategy QueryStrategy) (Server, error) {
 	if address := dest.Address; address.Family().IsDomain() {
 		u, err := url.Parse(address.Domain())
 		if err != nil {
 			return nil, err
 		}
-		switch {
-		case strings.EqualFold(u.String(), "localhost"):
-			return NewLocalNameServer(), nil
-		case strings.EqualFold(u.Scheme, "https"): // DOH Remote mode
-			return NewDoHNameServer(u, dispatcher, queryStrategy)
-		case strings.EqualFold(u.Scheme, "https+local"): // DOH Local mode
-			return NewDoHLocalNameServer(u, queryStrategy), nil
-		case strings.EqualFold(u.Scheme, "quic+local"): // DNS-over-QUIC Local mode
-			return NewQUICNameServer(u, queryStrategy)
-		case strings.EqualFold(u.Scheme, "tcp"): // DNS-over-TCP Remote mode
-			return NewTCPNameServer(u, dispatcher, queryStrategy)
-		case strings.EqualFold(u.Scheme, "tcp+local"): // DNS-over-TCP Local mode
-			return NewTCPLocalNameServer(u, queryStrategy)
-		case strings.EqualFold(u.String(), "fakedns"):
-			return NewFakeDNSServer(), nil
+		switch strings.ToLower(u.String()) {
+		case "localhost":
+			{
+				return NewLocalNameServer(), nil
+			}
+		case "fakedns":
+			{
+				return NewFakeDNSServer(), nil
+			}
+		}
+		if i, ok := NameServerRegister[strings.ToLower(u.Scheme)]; ok {
+			return InitNameServer(ctx, i, u, dispatcher, queryStrategy)
 		}
 	}
 	if dest.Network == net.Network_Unknown {
 		dest.Network = net.Network_UDP
 	}
 	if dest.Network == net.Network_UDP { // UDP classic DNS mode
-		return NewClassicNameServer(dest, dispatcher), nil
+		return NewNameServer(ctx, NewClassicNameServer(dest, dispatcher), queryStrategy), nil
 	}
 	return nil, newError("No available name server could be created from ", dest).AtWarning()
 }
@@ -80,7 +87,7 @@ func NewClient(
 
 	err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher) error {
 		// Create a new server for each client for now
-		server, err := NewServer(ns.Address.AsDestination(), dispatcher, ns.GetQueryStrategy())
+		server, err := NewServer(ctx, ns.Address.AsDestination(), dispatcher, ns.GetQueryStrategy())
 		if err != nil {
 			return newError("failed to create nameserver").Base(err).AtWarning()
 		}
@@ -167,7 +174,7 @@ func NewClient(
 func NewSimpleClient(ctx context.Context, endpoint *net.Endpoint, clientIP net.IP) (*Client, error) {
 	client := &Client{}
 	err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher) error {
-		server, err := NewServer(endpoint.AsDestination(), dispatcher, QueryStrategy_USE_IP)
+		server, err := NewServer(ctx, endpoint.AsDestination(), dispatcher, QueryStrategy_USE_IP)
 		if err != nil {
 			return newError("failed to create nameserver").Base(err).AtWarning()
 		}
@@ -194,21 +201,27 @@ func (c *Client) Name() string {
 }
 
 // QueryIP sends DNS query to the name server with the client's IP.
-func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, error) {
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
-	ips, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
-	cancel()
-
-	if err != nil {
-		return ips, err
+func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, uint32, error) {
+	if !disableCache {
+		if ips, ttl, err := c.server.QueryCachedIP(ctx, domain, option); err != errRecordNotFound {
+			return ips, ttl, err
+		}
 	}
-	return c.MatchExpectedIPs(domain, ips)
+
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+
+	if ips, ttl, err := c.server.QueryIP(ctx, domain, c.clientIP, option); err != nil {
+		return nil, 0, err
+	} else {
+		return c.MatchExpectedIPs(domain, ips, ttl)
+	}
 }
 
 // MatchExpectedIPs matches queried domain IPs with expected IPs and returns matched ones.
-func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error) {
+func (c *Client) MatchExpectedIPs(domain string, ips []net.IP, ttl uint32) ([]net.IP, uint32, error) {
 	if len(c.expectIPs) == 0 {
-		return ips, nil
+		return ips, ttl, nil
 	}
 	newIps := []net.IP{}
 	for _, ip := range ips {
@@ -220,10 +233,10 @@ func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error)
 		}
 	}
 	if len(newIps) == 0 {
-		return nil, errExpectedIPNonMatch
+		return nil, 0, errExpectedIPNonMatch
 	}
 	newError("domain ", domain, " expectIPs ", newIps, " matched at server ", c.Name()).AtDebug().WriteToLog()
-	return newIps, nil
+	return newIps, ttl, nil
 }
 
 func ResolveIpOptionOverride(queryStrategy QueryStrategy, ipOption dns.IPOption) dns.IPOption {

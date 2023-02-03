@@ -15,11 +15,12 @@ import (
 )
 
 type Holder struct {
-	domainToIP cache.Lru
+	domainToIP cache.Lru[string, net.Address]
 	ipRange    *gonet.IPNet
 	mu         *sync.Mutex
-
-	config *FakeDnsPool
+	queryKey   int
+	queryValue int
+	config     *FakeDnsPool
 }
 
 func (fkdns *Holder) IsIPInIPPool(ip net.Address) bool {
@@ -70,7 +71,7 @@ func NewFakeDNSHolder() (*Holder, error) {
 }
 
 func NewFakeDNSHolderConfigOnly(conf *FakeDnsPool) (*Holder, error) {
-	return &Holder{nil, nil, nil, conf}, nil
+	return &Holder{config: conf}, nil
 }
 
 func (fkdns *Holder) initializeFromConfig() error {
@@ -90,7 +91,7 @@ func (fkdns *Holder) initialize(ipPoolCidr string, lruSize int) error {
 	if math.Log2(float64(lruSize)) >= float64(rooms) {
 		return newError("LRU size is bigger than subnet size").AtError()
 	}
-	fkdns.domainToIP = cache.NewLru(lruSize)
+	fkdns.domainToIP = cache.NewLru[string, net.Address](lruSize)
 	fkdns.ipRange = ipRange
 	fkdns.mu = new(sync.Mutex)
 	return nil
@@ -100,6 +101,7 @@ func (fkdns *Holder) initialize(ipPoolCidr string, lruSize int) error {
 func (fkdns *Holder) GetFakeIPForDomain(domain string) []net.Address {
 	fkdns.mu.Lock()
 	defer fkdns.mu.Unlock()
+	fkdns.queryKey++
 	if v, ok := fkdns.domainToIP.Get(domain); ok {
 		return []net.Address{v.(net.Address)}
 	}
@@ -135,10 +137,36 @@ func (fkdns *Holder) GetDomainFromFakeDNS(ip net.Address) string {
 		return ""
 	}
 	if k, ok := fkdns.domainToIP.GetKeyFromValue(ip); ok {
-		return k.(string)
+		fkdns.queryValue++
+		return k
 	}
 	newError("A fake ip request to ", ip, ", however there is no matching domain name in fake DNS").AtInfo().WriteToLog()
 	return ""
+}
+
+func (fkdns *Holder) Dump() []*dns.FakeDNSDump {
+	fkdns.mu.Lock()
+	defer fkdns.mu.Unlock()
+	dump := fkdns.domainToIP.Dump()
+	result := make([]*cache.LruElement[string, string], 0, len(dump))
+	for _, x := range dump {
+		if x.Value != nil {
+			result = append(result, &cache.LruElement[string, string]{
+				Key:   x.Key,
+				Value: x.Value.String(),
+			})
+		}
+	}
+	return []*dns.FakeDNSDump{
+		{
+			Pool:       fkdns.config.IpPool,
+			Size:       uint32(len(dump)),
+			Cap:        uint32(fkdns.config.LruSize),
+			QueryKey:   uint32(fkdns.queryKey),
+			QueryValue: uint32(fkdns.queryValue),
+			Items:      result,
+		},
+	}
 }
 
 type HolderMulti struct {
@@ -208,6 +236,14 @@ func (h *HolderMulti) Close() error {
 		}
 	}
 	return nil
+}
+
+func (h *HolderMulti) Dump() []*dns.FakeDNSDump {
+	result := make([]*dns.FakeDNSDump, 0, len(h.holders))
+	for _, x := range h.holders {
+		result = append(result, x.Dump()...)
+	}
+	return result
 }
 
 func (h *HolderMulti) createHolderGroups() error {

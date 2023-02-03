@@ -19,7 +19,7 @@ type LocalNameServer struct {
 const errEmptyResponse = "No address associated with hostname"
 
 // QueryIP implements Server.
-func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, option dns.IPOption, _ bool) (ips []net.IP, err error) {
+func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, option dns.IPOption) (ips []net.IP, ttl uint32, err error) {
 	start := time.Now()
 	ips, err = s.client.LookupIP(domain, option)
 
@@ -32,7 +32,11 @@ func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, op
 		log.Record(&log.DNSLog{Server: s.Name(), Domain: domain, Result: ips, Status: log.DNSQueried, Elapsed: time.Since(start), Error: err})
 	}
 
-	return
+	return ips, dns.DefaultTTL, err
+}
+
+func (s *LocalNameServer) QueryCachedIP(ctx context.Context, domain string, option dns.IPOption) ([]net.IP, uint32, error) {
+	return nil, 0, errRecordNotFound
 }
 
 // Name implements Server.

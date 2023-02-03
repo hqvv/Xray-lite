@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	dns_app "github.com/xtls/xray-core/app/dns"
 	"github.com/xtls/xray-core/common"
 	"github.com/xtls/xray-core/common/buf"
 	"github.com/xtls/xray-core/common/errors"
@@ -217,21 +218,29 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, d internet.
 	return nil
 }
 
+func (h *Handler) LookupIPWithTTL(domain string, option dns.IPOption) ([]net.IP, uint32, error) {
+	if builtinDNS, ok := h.client.(*dns_app.DNS); ok {
+		return builtinDNS.LookupIPWithTTL(domain, option)
+	} else {
+		ips, err := h.client.LookupIP(domain, option)
+		return ips, dns.DefaultTTL, err
+	}
+}
+
 func (h *Handler) handleIPQuery(id uint16, qType dnsmessage.Type, domain string, writer dns_proto.MessageWriter) {
 	var ips []net.IP
+	var ttl uint32
 	var err error
-
-	var ttl uint32 = 600
 
 	switch qType {
 	case dnsmessage.TypeA:
-		ips, err = h.client.LookupIP(domain, dns.IPOption{
+		ips, ttl, err = h.LookupIPWithTTL(domain, dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: false,
 			FakeEnable: true,
 		})
 	case dnsmessage.TypeAAAA:
-		ips, err = h.client.LookupIP(domain, dns.IPOption{
+		ips, ttl, err = h.LookupIPWithTTL(domain, dns.IPOption{
 			IPv4Enable: false,
 			IPv6Enable: true,
 			FakeEnable: true,

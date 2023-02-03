@@ -198,7 +198,6 @@ func loadFile(file string) ([]byte, error) {
 		// Do not cache file, may save RAM when there
 		// are many files, but consume CPU each time.
 		return bs, nil
-		FileCache[file] = bs
 	}
 	return FileCache[file], nil
 }
@@ -220,7 +219,6 @@ func loadIP(file, code string) ([]*router.CIDR, error) {
 		}
 		defer runtime.GC()     // or debug.FreeOSMemory()
 		return geoip.Cidr, nil // do not cache geoip
-		IPCache[index] = &geoip
 	}
 	return IPCache[index].Cidr, nil
 }
@@ -242,7 +240,6 @@ func loadSite(file, code string) ([]*router.Domain, error) {
 		}
 		defer runtime.GC()         // or debug.FreeOSMemory()
 		return geosite.Domain, nil // do not cache geosite
-		SiteCache[index] = &geosite
 	}
 	return SiteCache[index].Domain, nil
 }

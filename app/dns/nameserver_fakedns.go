@@ -20,12 +20,16 @@ func (FakeDNSServer) Name() string {
 	return "FakeDNS"
 }
 
-func (f *FakeDNSServer) QueryIP(ctx context.Context, domain string, _ net.IP, opt dns.IPOption, _ bool) ([]net.IP, error) {
+func (f *FakeDNSServer) QueryCachedIP(ctx context.Context, domain string, opt dns.IPOption) ([]net.IP, uint32, error) {
+	return nil, 0, errRecordNotFound
+}
+
+func (f *FakeDNSServer) QueryIP(ctx context.Context, domain string, _ net.IP, opt dns.IPOption) ([]net.IP, uint32, error) {
 	if f.fakeDNSEngine == nil {
 		if err := core.RequireFeatures(ctx, func(fd dns.FakeDNSEngine) {
 			f.fakeDNSEngine = fd
 		}); err != nil {
-			return nil, newError("Unable to locate a fake DNS Engine").Base(err).AtError()
+			return nil, 0, newError("Unable to locate a fake DNS Engine").Base(err).AtError()
 		}
 	}
 	var ips []net.Address
@@ -37,13 +41,13 @@ func (f *FakeDNSServer) QueryIP(ctx context.Context, domain string, _ net.IP, op
 
 	netIP, err := toNetIP(ips)
 	if err != nil {
-		return nil, newError("Unable to convert IP to net ip").Base(err).AtError()
+		return nil, 0, newError("Unable to convert IP to net ip").Base(err).AtError()
 	}
 
 	newError(f.Name(), " got answer: ", domain, " -> ", ips).AtInfo().WriteToLog()
 
 	if len(netIP) > 0 {
-		return netIP, nil
+		return netIP, dns.DefaultTTLFakeDNS, nil
 	}
-	return nil, dns.ErrEmptyResponse
+	return nil, 0, dns.ErrEmptyResponse
 }

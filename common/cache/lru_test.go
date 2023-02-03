@@ -7,7 +7,7 @@ import (
 )
 
 func TestLruReplaceValue(t *testing.T) {
-	lru := NewLru(2)
+	lru := NewLru[int, int](2)
 	lru.Put(2, 6)
 	lru.Put(1, 5)
 	lru.Put(1, 2)
@@ -22,7 +22,7 @@ func TestLruReplaceValue(t *testing.T) {
 }
 
 func TestLruRemoveOld(t *testing.T) {
-	lru := NewLru(2)
+	lru := NewLru[int, int](2)
 	v, ok := lru.Get(2)
 	if ok {
 		t.Error("should get nil", v)
@@ -54,7 +54,7 @@ func TestLruRemoveOld(t *testing.T) {
 }
 
 func TestGetKeyFromValue(t *testing.T) {
-	lru := NewLru(2)
+	lru := NewLru[int, int](2)
 	lru.Put(3, 3)
 	lru.Put(2, 2)
 	lru.GetKeyFromValue(3)
@@ -70,7 +70,7 @@ func TestGetKeyFromValue(t *testing.T) {
 }
 
 func TestPeekKeyFromValue(t *testing.T) {
-	lru := NewLru(2)
+	lru := NewLru[int, int](2)
 	lru.Put(3, 3)
 	lru.Put(2, 2)
 	lru.PeekKeyFromValue(3)

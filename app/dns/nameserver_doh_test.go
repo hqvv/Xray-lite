@@ -17,12 +17,13 @@ func TestDOHNameServer(t *testing.T) {
 	url, err := url.Parse("https+local://1.1.1.1/dns-query")
 	common.Must(err)
 
-	s := NewDoHLocalNameServer(url, QueryStrategy_USE_IP)
+	s, err := InitNameServer(context.Background(), NewDoHLocalNameServer, url, nil, QueryStrategy_USE_IP)
+	common.Must(err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ips, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
+	ips, _, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-	}, false)
+	})
 	cancel()
 	common.Must(err)
 	if len(ips) == 0 {
@@ -34,12 +35,13 @@ func TestDOHNameServerWithCache(t *testing.T) {
 	url, err := url.Parse("https+local://1.1.1.1/dns-query")
 	common.Must(err)
 
-	s := NewDoHLocalNameServer(url, QueryStrategy_USE_IP)
+	s, err := InitNameServer(context.Background(), NewDoHLocalNameServer, url, nil, QueryStrategy_USE_IP)
+	common.Must(err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ips, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
+	ips, _, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-	}, false)
+	})
 	cancel()
 	common.Must(err)
 	if len(ips) == 0 {
@@ -47,10 +49,10 @@ func TestDOHNameServerWithCache(t *testing.T) {
 	}
 
 	ctx2, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ips2, err := s.QueryIP(ctx2, "google.com", net.IP(nil), dns_feature.IPOption{
+	ips2, _, err := s.QueryCachedIP(ctx2, "google.com", dns_feature.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-	}, true)
+	})
 	cancel()
 	common.Must(err)
 	if r := cmp.Diff(ips2, ips); r != "" {
@@ -62,12 +64,13 @@ func TestDOHNameServerWithIPv4Override(t *testing.T) {
 	url, err := url.Parse("https+local://1.1.1.1/dns-query")
 	common.Must(err)
 
-	s := NewDoHLocalNameServer(url, QueryStrategy_USE_IP4)
+	s, err := InitNameServer(context.Background(), NewDoHLocalNameServer, url, nil, QueryStrategy_USE_IP4)
+	common.Must(err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ips, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
+	ips, _, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-	}, false)
+	})
 	cancel()
 	common.Must(err)
 	if len(ips) == 0 {
@@ -85,12 +88,13 @@ func TestDOHNameServerWithIPv6Override(t *testing.T) {
 	url, err := url.Parse("https+local://1.1.1.1/dns-query")
 	common.Must(err)
 
-	s := NewDoHLocalNameServer(url, QueryStrategy_USE_IP6)
+	s, err := InitNameServer(context.Background(), NewDoHLocalNameServer, url, nil, QueryStrategy_USE_IP6)
+	common.Must(err)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	ips, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
+	ips, _, err := s.QueryIP(ctx, "google.com", net.IP(nil), dns_feature.IPOption{
 		IPv4Enable: true,
 		IPv6Enable: true,
-	}, false)
+	})
 	cancel()
 	common.Must(err)
 	if len(ips) == 0 {

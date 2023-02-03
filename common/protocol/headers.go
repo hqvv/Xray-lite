@@ -85,14 +85,14 @@ var (
 	hasGCMAsmS390X = cpu.S390X.HasAES && cpu.S390X.HasAESCBC && cpu.S390X.HasAESCTR &&
 		(cpu.S390X.HasGHASH || cpu.S390X.HasAESGCM)
 
-	hasAESGCMHardwareSupport = runtime.GOARCH == "amd64" && hasGCMAsmAMD64 ||
+	HasAESGCMHardwareSupport = runtime.GOARCH == "amd64" && hasGCMAsmAMD64 ||
 		runtime.GOARCH == "arm64" && hasGCMAsmARM64 ||
 		runtime.GOARCH == "s390x" && hasGCMAsmS390X
 )
 
 func (sc *SecurityConfig) GetSecurityType() SecurityType {
 	if sc == nil || sc.Type == SecurityType_AUTO {
-		if hasAESGCMHardwareSupport {
+		if HasAESGCMHardwareSupport {
 			return SecurityType_AES128_GCM
 		}
 		return SecurityType_CHACHA20_POLY1305

@@ -43,6 +43,7 @@ func NewMetricsHandler(ctx context.Context, config *Config) (*MetricsHandler, er
 			"inbound":  {},
 			"outbound": {},
 			"user":     {},
+			"balancer": {},
 		}
 		manager.VisitCounters(func(name string, counter feature_stats.Counter) bool {
 			nameSplit := strings.Split(name, ">>>")

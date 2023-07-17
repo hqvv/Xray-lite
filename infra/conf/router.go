@@ -41,6 +41,8 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 	switch strings.ToLower(r.Strategy.Type) {
 	case strategyRandom, "":
 		strategy = strategyRandom
+	case strategyRoundRobin:
+		strategy = "roundRobin"
 	case strategyLeastPing:
 		strategy = "leastPing"
 	default:

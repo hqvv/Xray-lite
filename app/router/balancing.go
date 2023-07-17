@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"github.com/xtls/xray-core/common/dice"
+	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/extension"
 	"github.com/xtls/xray-core/features/outbound"
+	"github.com/xtls/xray-core/features/stats"
 )
 
 type BalancingStrategy interface {
@@ -24,9 +26,11 @@ func (s *RandomStrategy) PickOutbound(tags []string) string {
 }
 
 type Balancer struct {
+	tag       string
 	selectors []string
 	strategy  BalancingStrategy
 	ohm       outbound.Manager
+	sm        stats.Manager
 }
 
 func (b *Balancer) PickOutbound() (string, error) {
@@ -42,10 +46,23 @@ func (b *Balancer) PickOutbound() (string, error) {
 	if tag == "" {
 		return "", newError("balancing strategy returns empty tag")
 	}
+	if b.sm != nil {
+		name := "balancer>>>" + b.tag + ">>>pick>>>" + tag
+		if c, _ := stats.GetOrRegisterCounter(b.sm, name); c != nil {
+			c.Add(1)
+		}
+	}
 	return tag, nil
 }
 
 func (b *Balancer) InjectContext(ctx context.Context) {
+	if b.sm == nil {
+		if x := core.FromContext(ctx); x != nil {
+			_ = x.RequireFeatures(func(sm stats.Manager) {
+				b.sm = sm
+			})
+		}
+	}
 	if contextReceiver, ok := b.strategy.(extension.ContextReceiver); ok {
 		contextReceiver.InjectContext(ctx)
 	}

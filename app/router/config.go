@@ -125,18 +125,26 @@ func (br *BalancingRule) Build(ohm outbound.Manager) (*Balancer, error) {
 	switch br.Strategy {
 	case "leastPing":
 		return &Balancer{
+			tag:       br.Tag,
 			selectors: br.OutboundSelector,
 			strategy:  &LeastPingStrategy{},
+			ohm:       ohm,
+		}, nil
+	case "roundRobin":
+		return &Balancer{
+			tag:       br.Tag,
+			selectors: br.OutboundSelector,
+			strategy:  &RoundRobinStrategy{},
 			ohm:       ohm,
 		}, nil
 	case "random":
 		fallthrough
 	default:
 		return &Balancer{
+			tag:       br.Tag,
 			selectors: br.OutboundSelector,
 			strategy:  &RandomStrategy{},
 			ohm:       ohm,
 		}, nil
-
 	}
 }

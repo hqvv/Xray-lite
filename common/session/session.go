@@ -55,7 +55,7 @@ type Inbound struct {
 	CanSpliceCopy int
 }
 
-func(i *Inbound) SetCanSpliceCopy(canSpliceCopy int) int {
+func (i *Inbound) SetCanSpliceCopy(canSpliceCopy int) int {
 	if canSpliceCopy > i.CanSpliceCopy {
 		i.CanSpliceCopy = canSpliceCopy
 	}
@@ -72,7 +72,7 @@ type Outbound struct {
 	Gateway net.Address
 	// Name of the outbound proxy that handles the connection.
 	Name string
-	// Conn is actually internet.Connection. May be nil. It is currently nil for outbound with proxySettings 
+	// Conn is actually internet.Connection. May be nil. It is currently nil for outbound with proxySettings
 	Conn net.Conn
 }
 

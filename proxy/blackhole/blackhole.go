@@ -35,7 +35,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	if outbound != nil {
 		outbound.Name = "blackhole"
 	}
-	
+
 	nBytes := h.response.WriteTo(link.Writer)
 	if nBytes > 0 {
 		// Sleep a little here to make sure the response is sent to client.

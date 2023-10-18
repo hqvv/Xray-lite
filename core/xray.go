@@ -181,7 +181,7 @@ func NewWithContext(ctx context.Context, config *Config) (*Instance, error) {
 }
 
 func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
-	server.ctx = context.WithValue(server.ctx, "cone", 
+	server.ctx = context.WithValue(server.ctx, "cone",
 		platform.NewEnvFlag(platform.UseCone).GetValue(func() string { return "" }) != "true")
 
 	if config.Transport != nil {
